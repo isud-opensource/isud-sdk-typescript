@@ -1,0 +1,671 @@
+openapi: 3.1.0
+info:
+  title: 优标宝商标数据开放 API
+  version: 1.0.0
+  x-logo: { altText: 优标宝 }
+  description: |
+    优标宝商标数据开放 API —— 商标/外观设计排查、档案查询与排查报告的统一 REST 接口。
+
+    ## 约定（参考 Signa / EUIPO 开放规范的惯例，按本平台实际实现落地）
+    - **鉴权**：所有请求携带 `X-API-Key` 请求头。密钥以 `lgr_live_` 开头，仅在创建时完整显示一次，
+      请从服务端调用，不要暴露在前端代码里。
+    - **响应信封**：所有响应为 `{ code, msg, data }` 信封。`code = "0000"` 表示成功；
+      其余为业务错误（见下方 Errors）。分页接口的 `data` 为 `{ current, size, total, records }`。
+    - **计费点数**：`search` 类接口每次扣 10 点，其余接口每次扣 1 点；**失败的请求不扣点**。
+      点数挂在组织级共享池上，可在客户控制台「用量」页按天/接口查看，或调 `GET /ip/usage` 自助查询。
+    - **幂等**：检索类 POST 支持请求头 `Idempotency-Key`（1~128 字符）；同键同请求体 24h 内
+      重放返回首次响应（带 `Idempotency-Replayed: true`）且不重复扣点；同键不同体返回 `9001`。
+    - **限流**：按密钥限流，检索类 30 次/分钟、读类 120 次/分钟，超限返回**真实 HTTP 429**
+      （信封 `code="9002"` + `Retry-After` / `RateLimit` / `RateLimit-Policy` 头 + `retryAfter`/`retryable` 字段）；
+      每个响应都带 `X-RateLimit-Limit` / `X-RateLimit-Remaining`。
+    - **计费响应头**：每个响应带 `X-Credits-Charged`（本次扣点数）与 `X-Credits-Remaining`（扣点后余额），
+      失败与幂等回放均为 `X-Credits-Charged: 0`。
+    - **请求追踪**：每个响应带 `X-Request-Id` 头与信封 `requestId` 字段，可凭该值调
+      `GET /ip/requests?requestId=...` 回查该次调用的真实状态码、扣点数与耗时。
+    - **错误契约**：`9001`/`0001` 错误响应带 `suggestion`（下一步建议）与 `retryable` 字段。
+    - **多语言**：平台只存各商标局原始数据，不翻译（与 Signa 一致）；`markText`、`ownerName`
+      等字段保持原语言返回。
+    - **日期**：请求/响应中的日期一律为 Unix 毫秒时间戳（int64），`0` 表示未知。
+    - **枚举不穷举**：`status`（法律状态）与 `riskLevel`（风险等级）是开放枚举，
+      新增值不构成破坏性变更，客户端应按未知值兜底处理。
+
+    ## Errors
+    | code | HTTP | 含义 |
+    |---|---|---|
+    | `0000` | 200 | 成功 |
+    | `0001` | 200 | 通用业务错误（msg 说明原因，retryable=true） |
+    | `0002` | 200 | 该法域数据源尚未接入 / 该数据类型未开放（**retryable=false，不扣点**） |
+    | `9001` | 200 | 参数解析失败（含 Idempotency-Key 误用或超 128 字符，带 suggestion） |
+    | `9002` | **429** | 触发限流（Retry-After / RateLimit / RateLimit-Policy 头） |
+    | `9003` | **429** | 触发组织每日点数上限（Retry-After 为距次日 0 点秒数，data 含 dailyLimit/todayUsed/resetAt） |
+    | `8889` | **401** | API 密钥缺失 / 无效 / 已禁用 / 已过期 / scope 不足 |
+
+    > 说明：信封内 `code` 携带业务语义；鉴权失败为真实 401、限流与每日额度为真实 429，其余业务错误 HTTP 状态恒为 200。
+    > `0002` 表示「能力不存在」而非「暂时故障」：重试无意义，且该请求不扣点。
+    > 缓存契约：实时性端点（`/ip/usage`、`/ip/requests`）带 `Cache-Control: no-store`；
+    > 其余读类 GET 带 `private, max-age=60`；检索/计算/MCP 带 `no-store`。
+    > CORS：开放 API 使用 API-Key 鉴权（不依赖 Cookie），预检允许任意源，
+    > `Access-Control-Allow-Headers` 含 `X-API-Key`、`Idempotency-Key`，浏览器端可直连。
+
+    ## 数据模型说明
+    字段与内部数据库（ip_trademark / ip_design / ip_report 表）的对外视图一一对应：
+    幂等键为 `externalId`（各局官方登记号，如 EUIPO applicationNumber），
+    `niceClasses` 为尼斯分类数组，`riskLevel` 为平台侧冲突判定结果。
+externalDocs:
+  url: https://docs.isud.cn/
+  description: 完整文档站（含快速开始与数据模型说明）
+servers:
+  - url: https://app.isud.cn/api/v1/open
+    description: 公网主入口
+  - url: https://isud.cn/api/v1/open
+    description: 公网备用入口（与主入口互通）
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: Trademarks
+    description: 商标排查与档案
+  - name: Designs
+    description: 外观设计排查
+  - name: Reports
+    description: 排查报告
+  - name: Statistics
+    description: 汇总统计
+  - name: MCP
+    description: AI Agent（WorkBuddy / 千问办公 / 百度搭子 / 豆包）接入
+
+paths:
+  /ip/trademark/search:
+    post:
+      tags: [Trademarks]
+      operationId: searchTrademarks
+      summary: 商标检索与冲突判定
+      description: |
+        在指定法域内检索在先商标，执行相似度 + 尼斯分类重叠判定，
+        返回冲突分级（high / medium / low）与整体结论。
+        每次调用扣 10 点。传 `saveReport=true` 时生成排查报告并回传 `reportId`。
+        支持请求头 `Idempotency-Key`（1~128 字符）：同键同请求体 24h 内重放返回首次响应
+        （带 `Idempotency-Replayed: true`）且不重复扣点；同键不同体返回 `9001`。
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 128 }
+          description: 幂等键，建议用业务单号；按密钥隔离
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrademarkSearchRequest'
+            examples:
+              basic:
+                summary: 基础检索（CN 真实数据）
+                value:
+                  jurisdictionCode: CN
+                  keyword: 优标宝
+                  niceClasses: ['35']
+                  intentMark: 优标宝科技
+      responses:
+        '200':
+          description: 排查结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrademarkSearchResponse'
+              examples:
+                conflict:
+                  summary: 存在中度冲突
+                  value:
+                    code: '0000'
+                    msg: 成功
+                    data:
+                      jurisdictionCode: CN
+                      keyword: 优标宝
+                      total: 3
+                      highRisk: 0
+                      mediumRisk: 1
+                      lowRisk: 2
+                      activeCount: 3
+                      conclusion: 存在中度相似商标，建议进一步人工评估
+                      source: cnipa
+                      elapsedMs: 2150
+                      items:
+                        - markText: 优标
+                          markType: WORD
+                          niceClasses: ['35']
+                          ownerName: 西安优标工贸有限公司
+                          status: Filed
+                          applicationNumber: '48659599'
+                          registrationNumber: '48659599'
+                          filingDate: 1596470400000
+                          expiryDate: 0
+                          riskLevel: medium
+                          riskReason: 长公共前缀 优标 + 尼斯分类重叠
+                          externalId: '48659599'
+        '429':
+          description: 触发限流（按密钥 30 次/分钟或网关 IP 突发防洪）
+          headers:
+            Retry-After: { schema: { type: integer }, description: 建议等待秒数 }
+            RateLimit-Policy: { schema: { type: string }, examples: ['30;w=60'] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+              examples:
+                rateLimited:
+                  value:
+                    code: '9002'
+                    msg: 请求过于频繁，请稍后重试
+                    data: { policy: plan-search, limit: 30, remaining: 0, resetAt: 1795057311464 }
+                    requestId: req_72c08dccdb8bb9cf
+                    suggestion: 请在 retryAfter 秒后重试；客户端应依据 Retry-After 头做退避，不要立即重试
+                    retryable: true
+                    retryAfter: 60
+
+  /ip/trademark/list:
+    get:
+      tags: [Trademarks]
+      operationId: listTrademarks
+      summary: 分页查询商标档案
+      parameters:
+        - { $ref: '#/components/parameters/Current' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: keyword, in: query, schema: { type: string }, description: 综合关键字（文字/申请号/权利人） }
+        - { name: markText, in: query, schema: { type: string }, description: 商标文字精确匹配 }
+        - { name: ownerName, in: query, schema: { type: string }, description: 权利人名称 }
+        - { name: status, in: query, schema: { type: string }, description: '法律状态，如 Registered / Filed / Expired' }
+        - { name: niceClass, in: query, schema: { type: string }, description: 尼斯分类号，如 9 }
+        - { name: markType, in: query, schema: { type: string }, description: '商标类型 WORD / FIGURATIVE / COMBINED 等' }
+        - { name: riskLevel, in: query, schema: { type: string }, description: '风险等级 high / medium / low / none' }
+        - { name: jurisdictionId, in: query, schema: { type: integer }, description: 法域 ID }
+        - { name: isOwned, in: query, schema: { type: boolean }, description: 是否名下商标过滤 }
+        - { name: isWatched, in: query, schema: { type: boolean }, description: 是否已监控过滤 }
+        - { name: sortBy, in: query, schema: { type: string }, description: 排序字段 }
+      responses:
+        '200':
+          description: 分页结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/PageMeta'
+                          - type: object
+                            properties:
+                              records:
+                                type: array
+                                items: { $ref: '#/components/schemas/TrademarkItem' }
+
+  /ip/design/search:
+    post:
+      tags: [Designs]
+      operationId: searchDesigns
+      summary: 外观设计检索
+      description: |
+        按关键字与洛迦诺分类检索在先外观设计。每次调用扣 10 点。
+        注意：CN 法域外观设计检索暂未开放，传 `jurisdictionCode: CN` 将返回 `0001`。
+        支持请求头 `Idempotency-Key`（语义同商标检索）。
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 128 }
+          description: 幂等键，建议用业务单号；按密钥隔离
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignSearchRequest'
+      responses:
+        '200':
+          description: 排查结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesignSearchResponse'
+
+  /ip/report/list:
+    get:
+      tags: [Reports]
+      operationId: listReports
+      summary: 分页查询排查报告
+      parameters:
+        - { $ref: '#/components/parameters/Current' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: 分页结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/PageMeta'
+                          - type: object
+                            properties:
+                              records:
+                                type: array
+                                items: { $ref: '#/components/schemas/ReportItem' }
+
+  /ip/workbench/stats:
+    get:
+      tags: [Statistics]
+      operationId: getWorkbenchStats
+      summary: 工作台汇总统计
+      description: 商标/设计总量、名下资产、风险与监测、案件与期限等汇总计数。
+      responses:
+        '200':
+          description: 统计结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/WorkbenchStats' }
+
+  /ip/usage:
+    get:
+      tags: [Statistics]
+      operationId: getOpenApiUsage
+      summary: 点数余额与用量查询
+      description: 查询密钥所属组织的点数余额、当日/当月调用量与扣除点数，供集成方自助对账。失败请求不扣点。
+      responses:
+        '200':
+          description: 用量统计
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/OpenApiUsage' }
+
+  /ip/requests:
+    get:
+      tags: [Statistics]
+      operationId: queryRequestLog
+      summary: 按 requestId 回查请求日志
+      description: |
+        凭任一响应中的 `requestId`（或 `X-Request-Id` 头）回查该次调用的真实执行结果：
+        状态码、实际扣点数、耗时、来源 IP。报障/对账时只需提供 requestId。
+        查不到时返回 `data: null`。每次调用扣 1 点。
+      parameters:
+        - name: requestId
+          in: query
+          required: true
+          schema: { type: string, maxLength: 64 }
+          description: 请求追踪 ID（如 req_feceda8ebe11ee0c）
+      responses:
+        '200':
+          description: 请求日志条目或 null
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        oneOf:
+                          - { type: 'null' }
+                          - $ref: '#/components/schemas/RequestLogItem'
+
+  /mcp/health:
+    get:
+      tags: [MCP]
+      operationId: getMcpHealth
+      summary: MCP 服务端健康检查
+      description: 无需鉴权，返回 MCP 服务端状态与已开放工具数量，用于探活。
+      security: []
+      responses:
+        '200':
+          description: MCP 状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, description: 服务状态 }
+                  serverName: { type: string, description: MCP 服务端名称 }
+                  serverVersion: { type: string, description: MCP 服务端版本 }
+                  protocolVersion: { type: string, description: MCP 协议版本（如 2025-06-18） }
+                  toolCount: { type: integer, description: 已开放工具数量 }
+                  timestamp: { type: integer, description: 服务器当前时间（13 位毫秒时间戳） }
+
+  /mcp:
+    post:
+      tags: [MCP]
+      operationId: callMcp
+      servers:
+        - { url: 'https://app.isud.cn/api/v1', description: MCP 挂载在 /api/v1 下（不在 /open 内） }
+      summary: MCP JSON-RPC 2.0 端点
+      description: |
+        MCP Streamable HTTP 端点，面向 WorkBuddy / 千问办公 / 百度搭子 / 豆包 / 自建 Agent。
+        使用与 REST 相同的 API Key 鉴权（scope: `mcp`），计费口径与 REST 一致。
+        可用工具：trademark_search、design_search、trademark_list、report_list、
+        watch_task_list、workbench_stats（以 tools/list 实时返回为准）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: JSON-RPC 2.0 请求（initialize / tools/list / tools/call）
+              required: [jsonrpc, method]
+              properties:
+                jsonrpc: { type: string, examples: ['2.0'] }
+                id: { description: 请求 ID }
+                method: { type: string, examples: [tools/list] }
+                params: { type: object }
+      responses:
+        '200':
+          description: JSON-RPC 2.0 响应
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: '开放平台密钥，lgr_live_ 前缀，控制台创建，仅创建时完整展示一次。也接受 "Authorization: Bearer <key>"。'
+
+  parameters:
+    Current:
+      name: current
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+      description: 页码，从 1 开始
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+      description: 每页条数
+
+  schemas:
+    Envelope:
+      type: object
+      description: 通用响应信封
+      required: [code, msg, data]
+      properties:
+        code:
+          type: string
+          description: "'0000' 成功；0001 业务错误；9001 参数错误；9002 限流（HTTP 429）；8889 鉴权失败（HTTP 401）"
+          examples: ['0000']
+        msg:
+          type: string
+          description: 人类可读消息
+        data:
+          description: 业务数据，失败时为 null
+        requestId:
+          type: string
+          description: 请求追踪 ID（与 X-Request-Id 头一致），可凭它回查请求日志
+          examples: [req_feceda8ebe11ee0c]
+        suggestion:
+          type: string
+          description: 下一步建议（9001/0001/9002 错误时出现）
+        retryable:
+          type: boolean
+          description: 该错误是否可原样重试
+        retryAfter:
+          type: integer
+          description: 建议重试等待秒数（9002 限流时出现，与 Retry-After 头一致）
+
+    RequestLogItem:
+      type: object
+      description: 单次请求日志（GET /ip/requests 回查结果）
+      properties:
+        requestId: { type: string, examples: [req_feceda8ebe11ee0c] }
+        endpoint: { type: string, examples: [trademark.search] }
+        method: { type: string, examples: [POST] }
+        statusCode:
+          type: integer
+          description: '200 业务成功 / 400 业务失败 / 429 限流 / 401 鉴权失败'
+        success: { type: boolean }
+        credits: { type: integer, description: 实际扣点数 }
+        latencyMs: { type: integer, format: int64 }
+        clientIp: { type: string }
+        errorMsg: { type: string }
+        createdAt: { type: integer, format: int64, description: Unix 毫秒时间戳 }
+
+    PageMeta:
+      type: object
+      properties:
+        current: { type: integer, examples: [1] }
+        size: { type: integer, examples: [10] }
+        total: { type: integer, format: int64, description: 总条数 }
+
+    TrademarkSearchRequest:
+      type: object
+      required: [jurisdictionCode]
+      description: keyword 与 owner 至少提供一项（owner-only 走申请人维度检索）
+      properties:
+        jurisdictionCode:
+          type: string
+          maxLength: 20
+          description: 法域代码，如 EU/EM、US、CN
+          examples: ['EU/EM']
+        connectorCode:
+          type: string
+          description: 数据源连接器代码（缺省用默认连接器）
+        keyword:
+          type: string
+          maxLength: 100
+          description: 待排查的商标文字（与 owner 至少提供一项）
+          examples: [优标宝]
+        niceClasses:
+          type: array
+          items: { type: string }
+          description: 意图申请的尼斯分类（CN 通道下推到数据源过滤）
+        status:
+          type: array
+          items: { type: string }
+          description: 限定法律状态（CN 通道下推到数据源，total 跟随过滤）
+        owner:
+          type: string
+          maxLength: 200
+          description: 限定权利人（子串匹配；只传 owner 时按申请人维度检索）
+        current:
+          type: integer
+          minimum: 1
+          default: 1
+          description: 页码，从 1 起
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: 每页条数
+        intentMark:
+          type: string
+          description: 意图商标（用于报告标题与对比基准）
+        intentClasses:
+          type: array
+          items: { type: string }
+        saveReport:
+          type: boolean
+          default: false
+          description: 是否生成排查报告
+        reportTitle:
+          type: string
+          description: 报告标题（saveReport=true 时可用）
+
+    TrademarkSearchResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/TrademarkSearchResult' }
+
+    TrademarkSearchResult:
+      type: object
+      properties:
+        jurisdictionCode: { type: string, examples: ['EU/EM'] }
+        keyword: { type: string }
+        total: { type: integer, format: int64, description: 命中的在先商标总数（CN 通道已跟随 status/owner/niceClasses 过滤；命中超 1 万显示 10,000+） }
+        page: { type: integer, description: 当前页码（回显请求 current） }
+        size: { type: integer, description: 每页条数（回显请求 size） }
+        totalPages: { type: integer, description: 总页数 = ceil(total/size) }
+        highRisk: { type: integer, description: 高风险冲突数 }
+        mediumRisk: { type: integer, description: 中风险冲突数 }
+        lowRisk: { type: integer, description: 低风险冲突数 }
+        activeCount: { type: integer, description: 有效（未失效）商标数 }
+        conclusion:
+          type: string
+          description: 结论文案（服务端生成，可直接展示）
+        source:
+          type: string
+          description: 数据来源连接器标识（开放值，随接入数据源扩展）
+        elapsedMs: { type: integer, format: int64 }
+        meta: { $ref: '#/components/schemas/OpenSearchMeta' }
+        reportId:
+          type: integer
+          description: saveReport=true 时返回生成的报告 ID
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TrademarkItem' }
+
+    TrademarkItem:
+      type: object
+      description: 商标条目（对外稳定视图）
+      properties:
+        markText: { type: string, description: 商标文字（原始语言，不翻译） }
+        markType:
+          type: string
+          description: 'WORD / FIGURATIVE / COMBINED / 3D / COLOR / POSITION / SOUND / OTHER（开放枚举）'
+        niceClasses:
+          type: array
+          items: { type: string }
+          description: 尼斯分类
+        ownerName: { type: string, description: 当前权利人 }
+        status:
+          type: string
+          description: '法律状态（开放枚举）：Filed / Published / Registered / Expired / Withdrawn / Refused / Opposed'
+        applicationNumber: { type: string }
+        registrationNumber: { type: string }
+        filingDate: { type: integer, format: int64, description: Unix 毫秒，0 未知 }
+        registrationDate: { type: integer, format: int64 }
+        expiryDate: { type: integer, format: int64, description: 有效期截止 }
+        riskLevel:
+          type: string
+          description: '平台冲突判定：high / medium / low / none'
+        riskReason: { type: string, description: 判定说明（相似通道 + 分类重叠） }
+        externalId:
+          type: string
+          description: 各局官方 ID，幂等键，可用于与官方数据 join
+
+    DesignSearchRequest:
+      type: object
+      required: [jurisdictionCode, keyword]
+      properties:
+        jurisdictionCode: { type: string, examples: ['EU/EM'] }
+        keyword: { type: string, maxLength: 100 }
+        locarnoClasses:
+          type: array
+          items: { type: string }
+          description: 洛迦诺分类，如 '07'
+        status:
+          type: array
+          items: { type: string }
+        owner: { type: string }
+        saveReport: { type: boolean, default: false }
+        reportTitle: { type: string }
+
+    DesignSearchResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                jurisdictionCode: { type: string }
+                keyword: { type: string }
+                total: { type: integer, format: int64 }
+                conclusion: { type: string }
+                source: { type: string }
+                elapsedMs: { type: integer, format: int64 }
+                meta: { $ref: '#/components/schemas/OpenSearchMeta' }
+                reportId: { type: integer }
+                items:
+                  type: array
+                  items: { $ref: '#/components/schemas/DesignItem' }
+
+    DesignItem:
+      type: object
+      properties:
+        title: { type: string, description: 设计名称 }
+        locarnoClass: { type: string, description: 洛迦诺分类号 }
+        locarnoIndication: { type: string, description: 分类说明 }
+        ownerName: { type: string }
+        status: { type: string, description: 'Registered / Expired / Withdrawn（开放枚举）' }
+        applicationNumber: { type: string }
+        filingDate: { type: integer, format: int64 }
+        expiryDate: { type: integer, format: int64 }
+        externalId: { type: string, description: 各局官方 ID，幂等键 }
+
+    ReportItem:
+      type: object
+      properties:
+        reportNo: { type: string, description: 报告编号（RPT-*） }
+        reportType: { type: string, description: trademark / design }
+        title: { type: string }
+        keyword: { type: string }
+        riskLevel: { type: string, description: high / medium / low / none }
+        conclusion: { type: string, description: safe / attention / conflict }
+        totalResults: { type: integer }
+        conflictCount: { type: integer }
+        highRiskCount: { type: integer }
+        createdAt: { type: integer, format: int64 }
+
+    WorkbenchStats:
+      type: object
+      description: 工作台汇总（字段按后端实现返回，以下为核心计数）
+      properties:
+        trademarkTotal: { type: integer, format: int64, description: 商标档案总量 }
+        trademarkOwned: { type: integer, format: int64, description: 名下商标数 }
+        designTotal: { type: integer, format: int64, description: 设计档案总量 }
+        highRiskTotal: { type: integer, format: int64, description: 高风险商标数 }
+        watchActiveCount: { type: integer, format: int64, description: 进行中监测任务数 }
+        watchDueCount: { type: integer, format: int64, description: 到期待查监测数 }
+        caseActiveCount: { type: integer, format: int64, description: 进行中案件数 }
+        deadlineDueCount: { type: integer, format: int64, description: 7 日内到期期限数 }
+        deadlineOverdueCount: { type: integer, format: int64, description: 已逾期期限数 }
+
+    OpenApiUsage:
+      type: object
+      description: 开放 API 用量（组织级共享池）
+      properties:
+        balance: { type: integer, format: int64, description: 剩余点数 = 总额度 - 已用 }
+        credits: { type: integer, format: int64, description: 点数总额度 }
+        creditsUsed: { type: integer, format: int64, description: 累计已用点数 }
+        today:
+          type: object
+          properties:
+            calls: { type: integer, format: int64, description: 当日调用次数（含失败留痕） }
+            points: { type: integer, format: int64, description: 当日扣除点数（仅成功） }
+        month:
+          type: object
+          properties:
+            calls: { type: integer, format: int64, description: 当月调用次数（含失败留痕） }
+            points: { type: integer, format: int64, description: 当月扣除点数（仅成功） }
+        periodResetAt: { type: integer, format: int64, description: 配额重置时间戳（毫秒），0 表示未配置 }
+        dailyLimit: { type: integer, format: int64, description: 每日点数上限（0 = 不限制），超限返回 9003，次日 0 点重置 }
+
+    OpenSearchMeta:
+      type: object
+      description: 检索可审计元数据（结果由哪个数据通道与算法版本产出，便于争议复现）
+      properties:
+        sortVersion: { type: string, description: 冲突判定/排序算法版本, example: 'v1' }
+        dataChannel: { type: string, description: 数据通道（与 source 一致）, example: 'cnipa' }
+        normalizer: { type: string, description: 法律状态归一化映射版本, example: 'status-map-v1' }

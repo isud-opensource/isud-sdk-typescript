@@ -1,0 +1,38 @@
+{
+  "name": "isud-sdk",
+  "version": "1.0.0",
+  "description": "优标宝商标数据开放 API 的 TypeScript SDK（零依赖，契约驱动）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE", "SDK-DESIGN.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "openapi-typescript openapi.yaml -o src/schema.d.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["trademark", "ip", "知识产权", "商标", "sdk"],
+  "license": "MIT",
+  "author": "优标宝开放平台 <opensource@isud.cn>",
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/isud/isud-sdk-typescript.git"
+  },
+  "homepage": "https://docs.isud.cn/",
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "openapi-typescript": "^7.13.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
