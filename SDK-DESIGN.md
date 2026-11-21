@@ -34,7 +34,7 @@
 | `getMcpHealth` | `get_mcp_health()` | `getMcpHealth()` | GET /mcp/health |
 | `callMcp` | `call_mcp()` | `callMcp()` | POST /mcp |
 
-- 客户端统一入口：`Client`（Python：`isud_sdk.Client`；TS：`new Client()`）。
+- 客户端统一入口：`Client`（Python：`isud_tm.Client`；TS：`new Client()`）。
 - 分页迭代器：Python `client.iter_trademarks(...)`（generator）；TS `client.listTrademarksAll(...)`（async generator），
   自动翻页直到取完 `total`。
 - 初始化统一接受：`api_key`（必填）、`base_url`（可选，默认 `https://app.isud.cn/api/v1/open`）、
@@ -148,7 +148,7 @@ SDK 额外维护 `client.last_meta`（最近一次调用的 meta），方便示�
 
 ```
 isud-sdk-python/
-├── src/isud_sdk/
+├── src/isud_tm/
 │   ├── models.py          # 【生成】openapi.yaml → dataclass，头部标注 GENERATED，勿手改
 │   ├── client.py          # 【手写】Client 主体 + 9 个端点方法
 │   ├── errors.py          # 【手写】异常体系（§3）

@@ -2,12 +2,12 @@
 /** 示例 1：近似商标排查（与 Python 版对齐）。
  *
  * 运行（3 步）:
- *   npm install isud-sdk
+ *   npm install @isud/tm
  *   export ISUD_API_KEY="lgr_live_你的密钥"
  *   npx tsx main.ts 优标宝 CN
  */
 
-import { Client, SdkError, formatSearchResult } from "isud-sdk";
+import { Client, SdkError, formatSearchResult } from "@isud/tm";
 
 async function main(): Promise<number> {
   const keyword = process.argv[2] ?? "优标宝";

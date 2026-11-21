@@ -1,5 +1,5 @@
 {
-  "name": "isud-sdk",
+  "name": "@isud/tm",
   "version": "1.0.0",
   "description": "优标宝商标数据开放 API 的 TypeScript SDK（零依赖，契约驱动）",
   "type": "module",
@@ -24,7 +24,7 @@
   "author": "优标宝开放平台 <opensource@isud.cn>",
   "repository": {
     "type": "git",
-    "url": "https://gitee.com/isud/isud-sdk-typescript.git"
+    "url": "https://github.com/isud-opensource/isud-sdk-typescript.git"
   },
   "homepage": "https://docs.isud.cn/",
   "devDependencies": {

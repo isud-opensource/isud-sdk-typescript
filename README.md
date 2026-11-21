@@ -1,4 +1,7 @@
-# isud-sdk (TypeScript)
+# @isud/tm (TypeScript)
+
+[![npm version](https://img.shields.io/npm/v/@isud/tm)](https://www.npmjs.com/package/@isud/tm)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 优标宝商标数据开放 API 的 TypeScript SDK —— **零运行时依赖**（原生 fetch），契约驱动。
 
@@ -11,7 +14,7 @@
 ## 安装
 
 ```bash
-npm install isud-sdk
+npm install @isud/tm
 ```
 
 ## 3 分钟上手
@@ -24,7 +27,7 @@ npx tsx hello.ts
 `hello.ts`：
 
 ```ts
-import { Client } from "isud-sdk";
+import { Client } from "@isud/tm";
 
 const client = new Client();  // 自动读环境变量 ISUD_API_KEY
 const result = await client.searchTrademarks({ jurisdictionCode: "CN", keyword: "优标宝" });
@@ -42,7 +45,7 @@ console.log("本次扣点:", client.lastMeta.creditsCharged);
 ## 核心能力
 
 ```ts
-import { Client, RateLimitError } from "isud-sdk";
+import { Client, RateLimitError } from "@isud/tm";
 
 const client = new Client({ apiKey: "lgr_live_..." });
 

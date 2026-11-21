@@ -67,7 +67,7 @@ export class Client {
         const headers = {
             "X-API-Key": this.apiKey,
             Accept: "application/json",
-            "User-Agent": "isud-sdk-typescript/1.0.0",
+            "User-Agent": "isud-tm-ts/1.0.0",
         };
         if (opts.body !== undefined)
             headers["Content-Type"] = "application/json";

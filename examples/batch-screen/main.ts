@@ -2,13 +2,13 @@
 /** 示例 2：批量风险筛查（与 Python 版对齐）。
  *
  * 运行:
- *   npm install isud-sdk
+ *   npm install @isud/tm
  *   export ISUD_API_KEY="lgr_live_你的密钥"
  *   npx tsx main.ts marks.sample.csv results.csv CN
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { Client, SdkError, RateLimitError, toCsv } from "isud-sdk";
+import { Client, SdkError, RateLimitError, toCsv } from "@isud/tm";
 
 const BATCH_PAUSE_MS = 2000;
 
