@@ -5,5 +5,5 @@ export { SdkError, AuthenticationError, RateLimitError, ValidationError, Capabil
 export type { ResponseMeta, EnvelopeLike } from "./errors.js";
 export { parseRetryAfter, exponentialBackoff } from "./retry.js";
 export * from "./helpers.js";
-export declare const VERSION = "1.0.1";
+export declare const VERSION = "1.0.3";
 //# sourceMappingURL=index.d.ts.map

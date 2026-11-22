@@ -15,4 +15,4 @@ export type { ResponseMeta, EnvelopeLike } from "./errors.js";
 export { parseRetryAfter, exponentialBackoff } from "./retry.js";
 export * from "./helpers.js";
 
-export const VERSION = "1.0.1";
+export const VERSION = "1.0.3";

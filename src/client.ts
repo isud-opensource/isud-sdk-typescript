@@ -116,7 +116,7 @@ export class Client {
     const headers: Record<string, string> = {
       "X-API-Key": this.apiKey,
       Accept: "application/json",
-      "User-Agent": "isud-tm-ts/1.0.1",
+      "User-Agent": "isud-tm-ts/1.0.3",
     };
     if (opts.body !== undefined) headers["Content-Type"] = "application/json";
     if (opts.idempotent) {
