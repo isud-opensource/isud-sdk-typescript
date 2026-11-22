@@ -1,0 +1,12 @@
+{
+  "name": "@isud/tm",
+  "version": "1.0.1",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "license": "MIT",
+  "publish": {
+    "include": ["src", "README.md", "LICENSE", "jsr.json"],
+    "exclude": ["src/**/*.test.ts"]
+  }
+}

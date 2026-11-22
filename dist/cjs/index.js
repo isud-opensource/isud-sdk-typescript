@@ -33,5 +33,5 @@ var retry_js_1 = require("./retry.js");
 Object.defineProperty(exports, "parseRetryAfter", { enumerable: true, get: function () { return retry_js_1.parseRetryAfter; } });
 Object.defineProperty(exports, "exponentialBackoff", { enumerable: true, get: function () { return retry_js_1.exponentialBackoff; } });
 __exportStar(require("./helpers.js"), exports);
-exports.VERSION = "1.0.3";
+exports.VERSION = "1.0.4";
 //# sourceMappingURL=index.js.map

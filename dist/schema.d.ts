@@ -146,6 +146,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ip/vienna/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 图形检索（维也纳 VCL10 + 以图搜图）
+         * @description 图形要素检索与视觉相似检索。mode=search 按维也纳编码检索商标图样（codes=24.9.1，多码 or/and 组合，可叠 cls 尼斯类）；
+         *     mode=codes 用中英文关键词换编码（q=王冠）；mode=tree 取分类层级；mode=similar 以图搜图（id=种子商标ID，maxdist 汉明距离）；
+         *     mode=meta 查 pHash 索引状态。data 为上游原始 JSON（含 rows/matchedCodes/imageUrl 等），字段随 mode 变化，客户端按 mode 解析。
+         *     覆盖范围：维也纳编码仅 WO/CA；以图搜图覆盖 TW/SG/AU/CA/HK/SE/WO/ES 八局 638 万图样。读类，1 点/次。
+         */
+        get: operations["queryVienna"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ip/gazette/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 商标公告（CN + 全球）
+         * @description 商标公告查询。mode=rows（默认）查 CN 公告明细（期号 issue、类型 type、商标名 mark、申请人 applicant、申请号 appno、日期区间、尼斯类 nice）；
+         *     mode=issues 按期号汇总（含官方公告 PDF 直链）；mode=global 查全球 7 局（CN/CA/WO/TW/HK/SG/NO）公告与状态事件（office/dateFrom/dateTo/event/q/owner/cls，
+         *     支持 mode=global&submode=stats 按局统计）。CN 公告约 8796 万行、全球事件约 1.64 亿行。data 为上游原始 JSON，字段随 mode 变化。读类，1 点/次。
+         */
+        get: operations["queryGazette"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ip/review/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 评审文书（CNIPA 298 万）
+         * @description CNIPA 商标评审文书查询（298.2 万条，2016-2026）。mode=docs（默认）查文书明细：q=全文/案号/商标名关键词、type=文书类型
+         *     （review_refuse 驳回复审/invalid 无效宣告/review_revoke 撤销复审/opposition 异议/notice）、law=法条key、year=年份、
+         *     regNo/appNo 按商标注册号/申请号精确关联、full=1 返回全文、page/size 分页；mode=meta 取分面统计（类型/法条/年份分布）。
+         *     返回案号、标题、商标名、当事人、决定日期、适用法条、结论句与官方原文链接。data 为上游原始 JSON。读类，1 点/次。
+         */
+        get: operations["queryReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ip/ipr/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 海关备案（12 万）
+         * @description 海关知识产权备案查询（customs_ipr 库，约 12 万条）。mode=records（默认）查备案明细：q=标称名称、owner=申请主体、
+         *     type=权利类别、cls=商品类别、regno=注册号、recno=备案号、dateFrom/dateTo=备案日期区间、page/size 分页；
+         *     mode=stats 取权利类别分布与最近核准日期；mode=icon 代理海关总署图样。返回备案号、标称名称、权利人、注册号、
+         *     权利类别、商品类别、备案起止日期与图样地址。该库为可选接入，未配置数据源时返回 0002 能力不可用。读类，1 点/次。
+         */
+        get: operations["queryIpr"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mcp/health": {
         parameters: {
             query?: never;
@@ -766,6 +857,206 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
                         data?: null | components["schemas"]["RequestLogItem"];
+                    };
+                };
+            };
+        };
+    };
+    queryVienna: {
+        parameters: {
+            query?: {
+                /** @description 检索模式 */
+                mode?: "search" | "codes" | "tree" | "similar" | "meta" | "img";
+                /** @description 维也纳编码，逗号分隔，最多40个（mode=search） */
+                codes?: string;
+                /** @description 多码组合方式 */
+                match?: "or" | "and";
+                /** @description 关键词（mode=codes），中英文如 王冠/crown */
+                q?: string;
+                /** @description 父节点编码（mode=tree），如 24/24.7 */
+                parent?: string;
+                /** @description 种子商标内部ID（mode=similar） */
+                id?: number;
+                /** @description 最大汉明距离，越小越严格 */
+                maxdist?: number;
+                /** @description 法域过滤，逗号分隔，如 WO,CA / TW,SG */
+                office?: string;
+                /** @description 尼斯类别 1-45 */
+                cls?: number;
+                /** @description 每页条数 */
+                limit?: number;
+                /** @description 翻页偏移 */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 图形检索结果（data 结构随 mode 变化） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    queryGazette: {
+        parameters: {
+            query?: {
+                /** @description 查询模式 */
+                mode?: "rows" | "issues" | "global";
+                /** @description mode=global 时的子模式 */
+                submode?: "rows" | "stats";
+                /** @description 公告期号（CN） */
+                issue?: string;
+                /** @description 公告类型（CN） */
+                type?: string;
+                /** @description 商标名称 */
+                mark?: string;
+                /** @description 关键词 */
+                q?: string;
+                /** @description 申请号/注册号 */
+                appno?: string;
+                /** @description 申请人 */
+                applicant?: string;
+                /** @description 代理机构 */
+                agent?: string;
+                /** @description 法域代码，逗号分隔（mode=global），如 CA,WO */
+                office?: string;
+                /** @description 起始日期 YYYY-MM-DD */
+                dateFrom?: string;
+                /** @description 结束日期 YYYY-MM-DD */
+                dateTo?: string;
+                /** @description 事件类型（mode=global） */
+                event?: string;
+                /** @description 权利人（mode=global） */
+                owner?: string;
+                /** @description 尼斯类别 1-45 */
+                cls?: number;
+                /** @description 每页条数 */
+                limit?: number;
+                /** @description 翻页偏移 */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 公告查询结果（data 结构随 mode 变化） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    queryReview: {
+        parameters: {
+            query?: {
+                /** @description 查询模式 */
+                mode?: "docs" | "meta";
+                /** @description 全文/案号/商标名关键词，如 华为 */
+                q?: string;
+                /** @description 文书类型，如 invalid / review_refuse */
+                type?: string;
+                /** @description 法条key（来自 meta），如 商标法|三十 */
+                law?: string;
+                /** @description 决定年份，如 2025 */
+                year?: string;
+                /** @description 商标注册号，精确关联 */
+                regNo?: string;
+                /** @description 商标申请号，精确关联 */
+                applyNo?: string;
+                /** @description 1=返回全文 */
+                full?: "0" | "1";
+                /** @description 页码 */
+                page?: number;
+                /** @description 每页条数 */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 评审文书结果（data 结构随 mode 变化） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    queryIpr: {
+        parameters: {
+            query?: {
+                /** @description 查询模式 */
+                mode?: "records" | "stats" | "icon";
+                /** @description 标称名称关键词，如 华为 */
+                q?: string;
+                /** @description 申请主体/权利人 */
+                owner?: string;
+                /** @description 权利类别 */
+                type?: string;
+                /** @description 商品类别 */
+                cls?: string;
+                /** @description 注册号 */
+                regno?: string;
+                /** @description 备案号 */
+                recno?: string;
+                /** @description 备案日期下界 YYYY-MM-DD */
+                dateFrom?: string;
+                /** @description 备案日期上界 YYYY-MM-DD */
+                dateTo?: string;
+                /** @description 图样ID（mode=icon） */
+                id?: string;
+                /** @description 页码 */
+                page?: number;
+                /** @description 每页条数 */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 海关备案结果（data 结构随 mode 变化） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: {
+                            [key: string]: unknown;
+                        };
                     };
                 };
             };

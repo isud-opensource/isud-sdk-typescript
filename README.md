@@ -81,6 +81,19 @@ try {
 | `getUsage()` | 点数余额与用量 |
 | `queryRequestLog(requestId)` | 按追踪 ID 回查调用结果 |
 | `getMcpHealth()` / `callMcp()` | MCP 探活 / JSON-RPC 调用 |
+| `queryVienna(params)` | 图形检索：维也纳 VCL10 / 关键词换码 / 分类树 / 以图搜图 |
+| `queryGazette(params)` | 商标公告：CN 公告明细与期号 / 全球 7 局事件 |
+| `queryReview(params)` | 评审文书：CNIPA 298 万裁定书 |
+| `queryIpr(params)` | 海关备案：12 万条备案记录（可选接入） |
+
+四个数据能力方法均为 GET、读类 1 点/次，返回 `data` 原始 JSON（结构随 `mode` 变化）：
+
+```ts
+const codes = await client.queryVienna({ mode: "codes", q: "王冠" });
+const rows  = await client.queryGazette({ mode: "rows", issue: "2008", mark: "华为" });
+const docs  = await client.queryReview({ q: "华为", size: 10 });
+const filings = await client.queryIpr({ q: "华为" });
+```
 
 ## 示例项目
 

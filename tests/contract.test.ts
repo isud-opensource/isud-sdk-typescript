@@ -112,11 +112,28 @@ test("自动分页迭代", async () => {
 });
 
 test("MCP health 走裸响应且 base URL 正确", async () => {
-  const { fetch, calls } = makeFetch(() => ({ status: 200, body: { status: "ok", toolCount: 13 } }));
+  const { fetch, calls } = makeFetch(() => ({ status: 200, body: { status: "ok", toolCount: 15 } }));
   const c = client(fetch);
   const r = await c.getMcpHealth() as { toolCount: number };
-  assert.equal(r.toolCount, 13);
+  assert.equal(r.toolCount, 15);
   assert.ok(calls[0].url.includes("/api/v1/open/mcp/health"));
+});
+
+test("四个数据能力端点走 GET 且参数透传", async () => {
+  const cases: Array<[keyof Client, Record<string, string | number>, string]> = [
+    ["queryVienna", { mode: "codes", q: "王冠" }, "/ip/vienna/query"],
+    ["queryGazette", { mode: "issues" }, "/ip/gazette/query"],
+    ["queryReview", { q: "华为", size: 1 }, "/ip/review/query"],
+    ["queryIpr", { mode: "stats" }, "/ip/ipr/query"],
+  ];
+  for (const [name, params, path] of cases) {
+    const { fetch, calls } = makeFetch(() => ({ status: 200, body: env({ ok: true }) }));
+    const c = client(fetch);
+    const data = await (c[name] as (p: Record<string, string | number>) => Promise<unknown>)(params);
+    assert.deepEqual(data, { ok: true });
+    assert.ok(calls[0].url.includes(path), `${name} path`);
+    assert.ok(calls[0].url.includes("mode=") || calls[0].url.includes("q="), `${name} params`);
+  }
 });
 
 test("parseRetryAfter 支持整数秒与 HTTP-date", () => {

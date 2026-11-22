@@ -191,6 +191,20 @@ export class Client {
             throw new ValidationError("requestId 必须为 1~64 字符。");
         return (await this.request("GET", "/ip/requests", { params: { requestId } }));
     }
+    // ---- 数据能力：图形检索 / 商标公告 / 评审文书 / 海关备案（GET，读类 1 点）----
+    // 返回 data 原始 JSON，结构随 mode 变化，调用方按传入的 mode 解析。
+    async queryVienna(params = {}) {
+        return this.request("GET", "/ip/vienna/query", { params });
+    }
+    async queryGazette(params = {}) {
+        return this.request("GET", "/ip/gazette/query", { params });
+    }
+    async queryReview(params = {}) {
+        return this.request("GET", "/ip/review/query", { params });
+    }
+    async queryIpr(params = {}) {
+        return this.request("GET", "/ip/ipr/query", { params });
+    }
     async getMcpHealth() {
         // /mcp/health 在 openapi 规范中未覆盖 servers，继承全局 /api/v1/open；
         // 只有 MCP JSON-RPC 主端点 /mcp 挂在 /api/v1（见 callMcp）。

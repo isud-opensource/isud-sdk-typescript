@@ -78,6 +78,10 @@ export declare class Client {
     getWorkbenchStats(): Promise<WorkbenchStats>;
     getUsage(): Promise<OpenApiUsage>;
     queryRequestLog(requestId: string): Promise<RequestLogItem | null>;
+    queryVienna(params?: Record<string, string | number | boolean | undefined>): Promise<unknown>;
+    queryGazette(params?: Record<string, string | number | boolean | undefined>): Promise<unknown>;
+    queryReview(params?: Record<string, string | number | boolean | undefined>): Promise<unknown>;
+    queryIpr(params?: Record<string, string | number | boolean | undefined>): Promise<unknown>;
     getMcpHealth(): Promise<{
         status: string;
         toolCount: number;
