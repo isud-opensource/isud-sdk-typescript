@@ -1,6 +1,6 @@
 {
   "name": "@isud/tm",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "优标宝商标数据开放 API 的 TypeScript SDK（零依赖，契约驱动）",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,7 +9,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js"
     }
   },
   "files": [
@@ -19,7 +20,7 @@
     "SDK-DESIGN.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node -e \"const f=require('fs');f.copyFileSync('src/schema.d.ts','dist/schema.d.ts');f.writeFileSync('dist/cjs/package.json',JSON.stringify({type:'commonjs'}))\"",
     "generate": "openapi-typescript openapi.yaml -o src/schema.d.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"

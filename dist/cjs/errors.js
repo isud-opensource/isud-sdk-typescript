@@ -1,0 +1,121 @@
+"use strict";
+/**
+ * 异常体系 —— 错误码/HTTP 状态码到异常类的映射。
+ * 与 Python SDK 严格对齐，见 SDK-DESIGN.md §3。
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ERROR_CODE_MAP = exports.NetworkError = exports.ApiError = exports.CapabilityError = exports.ValidationError = exports.RateLimitError = exports.AuthenticationError = exports.SdkError = exports.emptyMeta = void 0;
+exports.raiseForEnvelope = raiseForEnvelope;
+const emptyMeta = () => ({ idempotentReplay: false });
+exports.emptyMeta = emptyMeta;
+/** 所有异常的基类。 */
+class SdkError extends Error {
+    code;
+    requestId;
+    suggestion;
+    retryable;
+    meta;
+    statusCode;
+    constructor(message, opts = {}) {
+        super(message);
+        this.name = new.target.name;
+        this.code = opts.code;
+        this.requestId = opts.requestId;
+        this.suggestion = opts.suggestion;
+        this.retryable = opts.retryable ?? opts.defaultRetryable ?? false;
+        this.meta = opts.meta ?? (0, exports.emptyMeta)();
+        this.statusCode = opts.statusCode;
+    }
+    /** 给示例/终端用的完整友好提示（不裸 stack）。 */
+    friendly() {
+        const lines = [`✗ ${this.message}`];
+        if (this.code)
+            lines.push(`  错误码: ${this.code}`);
+        if (this.suggestion)
+            lines.push(`  建议: ${this.suggestion}`);
+        if (this.requestId)
+            lines.push(`  追踪ID: ${this.requestId}（报障时提供）`);
+        if (this.meta.creditsCharged !== undefined)
+            lines.push(`  本次扣点: ${this.meta.creditsCharged}`);
+        return lines.join("\n");
+    }
+}
+exports.SdkError = SdkError;
+/** 8889 / 401：密钥问题。不可重试。 */
+class AuthenticationError extends SdkError {
+    constructor(message, opts = {}) {
+        super(message, { ...opts, defaultRetryable: false });
+    }
+}
+exports.AuthenticationError = AuthenticationError;
+/** 9002/9003 / 429 限流，携带 retryAfter 秒数。 */
+class RateLimitError extends SdkError {
+    retryAfter;
+    constructor(message, opts = {}) {
+        super(message, { ...opts, defaultRetryable: true });
+        this.retryAfter = opts.retryAfter;
+    }
+}
+exports.RateLimitError = RateLimitError;
+/** 9001 参数错误。不可重试，带 suggestion。 */
+class ValidationError extends SdkError {
+    constructor(message, opts = {}) {
+        super(message, { ...opts, defaultRetryable: false });
+    }
+}
+exports.ValidationError = ValidationError;
+/** 0002 数据源未接入/类型未开放。不可重试，不扣点。 */
+class CapabilityError extends SdkError {
+    constructor(message, opts = {}) {
+        super(message, { ...opts, defaultRetryable: false });
+    }
+}
+exports.CapabilityError = CapabilityError;
+/** 0001 通用业务错误。retryable 由信封字段决定。 */
+class ApiError extends SdkError {
+}
+exports.ApiError = ApiError;
+/** 超时/连接失败/5xx。可重试。 */
+class NetworkError extends SdkError {
+    constructor(message, opts = {}) {
+        super(message, { ...opts, defaultRetryable: true });
+    }
+}
+exports.NetworkError = NetworkError;
+/** 根据信封 + HTTP 状态码抛出对应异常。成功（0000）时静默返回。 */
+function raiseForEnvelope(env, ctx) {
+    const code = String(env.code ?? "");
+    const msg = env.msg || "请求失败";
+    const common = {
+        code,
+        requestId: env.requestId ?? ctx.meta.requestId,
+        suggestion: env.suggestion,
+        retryable: env.retryable,
+        meta: ctx.meta,
+        statusCode: ctx.httpStatus,
+    };
+    if (code === "0000")
+        return;
+    if (ctx.httpStatus === 401 || code === "8889")
+        throw new AuthenticationError(msg, common);
+    if (ctx.httpStatus === 429 || code === "9002" || code === "9003") {
+        throw new RateLimitError(msg, {
+            ...common,
+            retryAfter: typeof env.retryAfter === "number" ? env.retryAfter : undefined,
+        });
+    }
+    switch (code) {
+        case "9001": throw new ValidationError(msg, common);
+        case "0002": throw new CapabilityError(msg, common);
+        default: throw new ApiError(msg, common);
+    }
+}
+exports.ERROR_CODE_MAP = {
+    "8889": AuthenticationError,
+    "9001": ValidationError,
+    "9002": RateLimitError,
+    "9003": RateLimitError,
+    "0002": CapabilityError,
+    "0001": ApiError,
+};
+//# sourceMappingURL=errors.js.map

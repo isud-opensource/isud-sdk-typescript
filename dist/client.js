@@ -2,7 +2,7 @@
  * 优标宝开放 API TypeScript 客户端 —— 零运行时依赖（原生 fetch）。
  * 生成层在 schema.d.ts（勿手改），本文件实现 SDK-DESIGN.md 的全部体验。
  */
-import { RateLimitError, ValidationError, NetworkError, emptyMeta, raiseForEnvelope, } from "./errors.js";
+import { ApiError, RateLimitError, ValidationError, NetworkError, emptyMeta, raiseForEnvelope, } from "./errors.js";
 import { parseRetryAfter, withRetry } from "./retry.js";
 export const DEFAULT_BASE_URL = "https://app.isud.cn/api/v1/open";
 export const MCP_BASE_URL = "https://app.isud.cn/api/v1";
@@ -101,7 +101,9 @@ export class Client {
             if (opts.envelope === false) {
                 this.lastMeta = this.buildMeta(res, {});
                 if (res.status >= 400)
-                    throw new NetworkError(`HTTP ${res.status}: ${text.slice(0, 200)}`, {
+                    // 已拿到 HTTP 响应（服务端返回的 4xx/5xx）归 ApiError；
+                    // 真正的 fetch 失败在上面 catch 分支仍是 NetworkError。
+                    throw new ApiError(`HTTP ${res.status}: ${text.slice(0, 200)}`, {
                         meta: this.lastMeta,
                         statusCode: res.status,
                     });
@@ -190,8 +192,11 @@ export class Client {
         return (await this.request("GET", "/ip/requests", { params: { requestId } }));
     }
     async getMcpHealth() {
+        // /mcp/health 在 openapi 规范中未覆盖 servers，继承全局 /api/v1/open；
+        // 只有 MCP JSON-RPC 主端点 /mcp 挂在 /api/v1（见 callMcp）。
+        // 这里不传 baseUrl，走默认 DEFAULT_BASE_URL（/api/v1/open）。
         return (await this.request("GET", "/mcp/health", {
-            baseUrl: MCP_BASE_URL, retries: 0, envelope: false,
+            retries: 0, envelope: false,
         }));
     }
     async callMcp(method, params, id = 1) {

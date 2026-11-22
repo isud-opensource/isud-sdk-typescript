@@ -84,8 +84,8 @@ try {
 
 ## 示例项目
 
-- [`examples/conflict-check`](examples/conflict-check) —— 近似商标排查
-- [`examples/batch-screen`](examples/batch-screen) —— 批量风险筛查（CSV 批量读 → 汇总导出）
+- [`examples/conflict-check`](https://github.com/isud-opensource/isud-sdk-typescript/tree/main/examples/conflict-check) —— 近似商标排查
+- [`examples/batch-screen`](https://github.com/isud-opensource/isud-sdk-typescript/tree/main/examples/batch-screen) —— 批量风险筛查（CSV 批量读 → 汇总导出）
 
 ## 重新生成类型层
 

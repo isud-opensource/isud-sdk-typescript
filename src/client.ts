@@ -6,6 +6,7 @@
 import type { paths, components } from "./schema.js";
 import {
   SdkError,
+  ApiError,
   RateLimitError,
   ValidationError,
   NetworkError,
@@ -149,7 +150,9 @@ export class Client {
       if (opts.envelope === false) {
         this.lastMeta = this.buildMeta(res, {});
         if (res.status >= 400)
-          throw new NetworkError(`HTTP ${res.status}: ${text.slice(0, 200)}`, {
+          // 已拿到 HTTP 响应（服务端返回的 4xx/5xx）归 ApiError；
+          // 真正的 fetch 失败在上面 catch 分支仍是 NetworkError。
+          throw new ApiError(`HTTP ${res.status}: ${text.slice(0, 200)}`, {
             meta: this.lastMeta,
             statusCode: res.status,
           });
@@ -282,8 +285,11 @@ export class Client {
   }
 
   async getMcpHealth(): Promise<{ status: string; toolCount: number }> {
+    // /mcp/health 在 openapi 规范中未覆盖 servers，继承全局 /api/v1/open；
+    // 只有 MCP JSON-RPC 主端点 /mcp 挂在 /api/v1（见 callMcp）。
+    // 这里不传 baseUrl，走默认 DEFAULT_BASE_URL（/api/v1/open）。
     return (await this.request("GET", "/mcp/health", {
-      baseUrl: MCP_BASE_URL, retries: 0, envelope: false,
+      retries: 0, envelope: false,
     })) as { status: string; toolCount: number };
   }
 

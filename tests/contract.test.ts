@@ -116,8 +116,7 @@ test("MCP health 走裸响应且 base URL 正确", async () => {
   const c = client(fetch);
   const r = await c.getMcpHealth() as { toolCount: number };
   assert.equal(r.toolCount, 13);
-  assert.ok(calls[0].url.includes("/api/v1/mcp/health"));
-  assert.ok(!calls[0].url.includes("/api/v1/open"));
+  assert.ok(calls[0].url.includes("/api/v1/open/mcp/health"));
 });
 
 test("parseRetryAfter 支持整数秒与 HTTP-date", () => {
