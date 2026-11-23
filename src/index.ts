@@ -16,4 +16,4 @@ export { parseRetryAfter, exponentialBackoff } from "./retry.js";
 export * from "./helpers.js";
 
 /** SDK 版本号。 */
-export const VERSION = "1.0.4";
+export const VERSION = "1.0.5";

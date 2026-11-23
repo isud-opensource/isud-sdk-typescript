@@ -35,5 +35,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       # npm 11.5.1+ 在 GitHub Actions 下自动用 OIDC (id-token: write) 换取临时凭据
-      - name: Publish (Trusted Publishing / OIDC, no token)
+      - name: Publish to npm (Trusted Publishing / OIDC, no token)
         run: npm publish --access public --provenance
+      # JSR：同一 id-token 走 OIDC，免 token 发布，并自动生成 provenance（Sigstore 透明日志）
+      # 前置：jsr.io 包 Settings 里把包 Link 到本 GitHub 仓库（scope admin 操作，仅一次）
+      - name: Publish to JSR (OIDC, with provenance)
+        run: npx jsr publish
