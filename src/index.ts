@@ -15,4 +15,5 @@ export type { ResponseMeta, EnvelopeLike } from "./errors.js";
 export { parseRetryAfter, exponentialBackoff } from "./retry.js";
 export * from "./helpers.js";
 
+/** SDK 版本号。 */
 export const VERSION = "1.0.4";

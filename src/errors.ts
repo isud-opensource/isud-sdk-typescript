@@ -5,26 +5,41 @@
 
 /** 每次调用都解析的响应元数据（扣点/追踪/限流），成功失败都有。 */
 export interface ResponseMeta {
+  /** 本次调用的追踪 ID。 */
   requestId?: string;
+  /** 本次调用扣减的点数。 */
   creditsCharged?: number;
+  /** 调用后剩余点数。 */
   creditsRemaining?: number;
+  /** 限流阈值（每分钟调用数）。 */
   rateLimit?: number;
+  /** 当前窗口剩余可调用次数。 */
   rateRemaining?: number;
+  /** 本次结果是否来自幂等键重放。 */
   idempotentReplay: boolean;
+  /** 响应的 HTTP 状态码。 */
   httpStatus?: number;
 }
 
+/** 构造一份空的响应元数据（未发生调用时的初始值）。 */
 export const emptyMeta = (): ResponseMeta => ({ idempotentReplay: false });
 
 /** 所有异常的基类。 */
 export class SdkError extends Error {
+  /** 业务错误码。 */
   readonly code?: string;
+  /** 本次调用的追踪 ID。 */
   readonly requestId?: string;
+  /** 针对该错误的改进建议。 */
   readonly suggestion?: string;
+  /** 该错误是否可重试。 */
   readonly retryable: boolean;
+  /** 响应元数据（扣点 / 限流 / 追踪）。 */
   readonly meta: ResponseMeta;
+  /** 对应的 HTTP 状态码。 */
   readonly statusCode?: number;
 
+  /** 创建异常实例。 */
   constructor(
     message: string,
     opts: {
@@ -68,7 +83,9 @@ export class AuthenticationError extends SdkError {
 
 /** 9002/9003 / 429 限流，携带 retryAfter 秒数。 */
 export class RateLimitError extends SdkError {
+  /** 建议的重试等待秒数（来自 Retry-After 头或信封）。 */
   retryAfter?: number;
+  /** 创建限流异常。 */
   constructor(
     message: string,
     opts: ConstructorParameters<typeof SdkError>[1] & { retryAfter?: number } = {}
@@ -102,13 +119,21 @@ export class NetworkError extends SdkError {
   }
 }
 
+/** 开放 API 统一响应信封的最小结构，供异常映射使用。 */
 export interface EnvelopeLike {
+  /** 业务错误码，`0000` 表示成功。 */
   code?: string;
+  /** 错误或提示信息。 */
   msg?: string;
+  /** 业务数据载荷。 */
   data?: unknown;
+  /** 本次调用的追踪 ID。 */
   requestId?: string;
+  /** 针对错误的改进建议。 */
   suggestion?: string;
+  /** 服务端标记该错误是否可重试。 */
   retryable?: boolean;
+  /** 限流时建议的重试等待秒数。 */
   retryAfter?: number;
 }
 
@@ -142,6 +167,7 @@ export function raiseForEnvelope(
   }
 }
 
+/** 业务错误码到异常构造器的映射表。 */
 export const ERROR_CODE_MAP: Record<string, new (m: string, o?: object) => SdkError> = {
   "8889": AuthenticationError,
   "9001": ValidationError,
