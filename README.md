@@ -114,6 +114,25 @@ npm run generate
 - 完整文档：<https://docs.isud.cn/>
 - 设计规范：[SDK-DESIGN.md](SDK-DESIGN.md)
 
+## 双发：npm + JSR
+
+同一份 TypeScript 源码，两个注册表都发，**无需编译即可被 Deno / JSR 直接消费**：
+
+| 注册表 | 安装方式 | 消费的源码 |
+|---|---|---|
+| npm | `npm install @isud/tm` | 编译产物 `dist/`（ESM + CJS + `.d.ts`） |
+| JSR | `npx jsr add @isud/tm` | **原始 `src/*.ts`**，Deno 原生跑 TypeScript |
+
+JSR 版零依赖、原生 `fetch`，Node ≥18 / Deno / 浏览器都能用。JSR 的 `exports` 直接指向 `./src/index.ts`，不需要 `tsc` 编译这一步。
+
+维护者发布（`package.json` 与 `jsr.json` 版本号需保持一致）：
+
+```bash
+npm run release:check     # 类型检查 + 测试 + 构建 + JSR dry-run
+npm run publish:npm       # 发 npm（需 npm login）
+npm run publish:jsr       # 发 JSR（首次会打开浏览器用 GitHub 授权）
+```
+
 ## License
 
 MIT

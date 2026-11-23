@@ -1,6 +1,6 @@
 {
   "name": "@isud/tm",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "exports": {
     ".": "./src/index.ts"
   },

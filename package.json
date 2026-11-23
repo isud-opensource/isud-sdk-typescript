@@ -23,7 +23,10 @@
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node -e \"const f=require('fs');f.copyFileSync('src/schema.d.ts','dist/schema.d.ts');f.writeFileSync('dist/cjs/package.json',JSON.stringify({type:'commonjs'}))\"",
     "generate": "openapi-typescript openapi.yaml -o src/schema.d.ts",
     "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "publish:npm": "npm publish --access public",
+    "publish:jsr": "npx jsr publish",
+    "release:check": "npm run typecheck && npm test && npm run build && npx jsr publish --dry-run"
   },
   "keywords": [
     "trademark",
