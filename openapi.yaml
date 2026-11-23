@@ -365,7 +365,7 @@ paths:
       description: |
         商标公告查询。mode=rows（默认）查 CN 公告明细（期号 issue、类型 type、商标名 mark、申请人 applicant、申请号 appno、日期区间、尼斯类 nice）；
         mode=issues 按期号汇总（含官方公告 PDF 直链）；mode=global 查全球 7 局（CN/CA/WO/TW/HK/SG/NO）公告与状态事件（office/dateFrom/dateTo/event/q/owner/cls，
-        支持 mode=global&submode=stats 按局统计）。CN 公告约 8796 万行、全球事件约 1.64 亿行。data 为上游原始 JSON，字段随 mode 变化。读类，1 点/次。
+        支持 mode=global&submode=stats 按局统计）。CN 公告约 9111 万行、全球事件约 1.64 亿行。data 为上游原始 JSON，字段随 mode 变化。读类，1 点/次。
       parameters:
         - { name: mode, in: query, schema: { type: string, enum: [rows, issues, global], default: rows }, description: '查询模式' }
         - { name: submode, in: query, schema: { type: string, enum: [rows, stats], default: rows }, description: 'mode=global 时的子模式' }
